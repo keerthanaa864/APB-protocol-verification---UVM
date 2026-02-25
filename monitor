@@ -1,0 +1,80 @@
+
+class apb_monitor extends uvm_monitor;
+  `uvm_component_utils(apb_monitor)
+  
+  virtual apb_if.MON vif0;
+  apb_agent_config m_cfg;
+  uvm_analysis_port #(apb_xtn) apb_monitor_port;
+  apb_xtn data_sent;
+  apb_xtn xtn;
+  
+  // Covergroup declaration
+  covergroup apb_cg;
+    addr_cp: coverpoint xtn.addr;
+    trans_type_cp: coverpoint xtn.trans_type;
+    wdata_cp: coverpoint xtn.wdata {
+      bins datagrp_0 = {[0:32'h0000_FFFF]};
+      bins datagrp_1 = {[32'h0001_0000:32'h00FF_FFFF]};
+      bins datagrp_2 = {[32'h0100_0000:32'h00FF_FFFF]};
+    }
+    rdata_cp: coverpoint xtn.rdata {
+      bins datagrp_0 = {[0:32'h0000_FFFF]};
+      bins datagrp_1 = {[32'h0001_0000:32'h00FF_FFFF]};
+      bins datagrp_2 = {[32'h0100_0000:32'h00FF_FFFF]};
+    }
+  endgroup
+
+  function new(string name="apb_monitor", uvm_component parent);
+    super.new(name, parent);
+    apb_monitor_port = new("apb_monitor_port", this);
+    apb_cg = new();
+    xtn = new();
+  endfunction
+  
+    function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    if(!uvm_config_db#(apb_agent_config)::get(this,"*","apb_agent_config",m_cfg))
+      `uvm_fatal("APB MON","not able to get config to monitor")
+      endfunction
+      
+      
+      function void connect_phase(uvm_phase phase);
+    super.connect_phase(phase);
+    vif0=m_cfg.vif0;
+  endfunction
+    
+  //run
+  task run_phase(uvm_phase phase);
+    begin
+      collect_data();
+    end
+  endtask
+  
+  
+  task collect_data();
+    int en_count=0,dis_count=0;
+    data_sent=apb_xtn::type_id::create("data_sent",this);
+    begin
+      forever begin
+        @(posedge vif0.pclk)
+        if(vif0.psel==1 && vif0.penable==1 && vif0.pready==1)
+          begin
+            if(vif0.pwrite==1)begin
+              data_sent.trans_type=write;
+              data_sent.addr=vif0.paddr;
+              data_sent.wdata=vif0.pwdata;
+            end else begin
+              data_sent.trans_type=read;
+              data_sent.addr=vif0.paddr;
+              data_sent.rdata=vif0.prdata;
+            end
+            
+            `uvm_info("APB MON",$sformatf("apb transaction %s",data_sent.sprint),UVM_MEDIUM)
+            apb_monitor_port.write(data_sent);
+            xtn=data_sent;
+            apb_cg.sample();
+          end
+      end
+    end
+  endtask
+endclass
