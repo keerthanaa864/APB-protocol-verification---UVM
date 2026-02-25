@@ -1,0 +1,47 @@
+// Code your design here
+module apb_mem #(parameter addr_width=10,data_width=32,RDY_COUNT=1)
+  (input wire pclk,
+   input wire presetn,
+   input wire psel,
+   input wire [addr_width-1:0] paddr,
+   input wire penable,
+   input wire pwrite,
+   input wire [data_width-1:0]pwdata,
+   output wire [data_width-1:0] prdata,
+   output reg pready);
+  
+  wire read_enable, write_enable;
+  reg[data_width-1:0]mem[2**addr_width:0];
+  integer rdy_count;
+  
+  assign read_enable = psel & (~pwrite) && penable & pready;
+  assign write_enable= psel & (pwrite) & penable & pready;
+  assign prdata[data_width-1:0] = (read_enable) ? mem[paddr]:1'h0;
+  
+  
+  always @(posedge pclk)
+    begin
+      if(write_enable)
+        mem[paddr]<=pwdata[data_width-1:0];
+    end
+  
+  always @(posedge pclk, negedge presetn)
+    begin
+      if(!presetn)
+        begin
+          pready<= 1'b0;
+          rdy_count<=0;
+        end
+      else 
+       // (rdy_count==RDY_COUNT)
+        begin
+          pready<=1'b1;//ready
+          rdy_count<=0;
+        end
+    /*  else
+        begin
+          pready<=1'b1;//not ready,still reading
+          rdy_count<=rdy_count+1;
+        end*/
+    end
+endmodule
