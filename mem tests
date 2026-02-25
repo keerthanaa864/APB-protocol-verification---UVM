@@ -1,0 +1,51 @@
+class apb_base_test extends uvm_test;
+  `uvm_component_utils(apb_base_test)
+  apb_agent_config m_cfg;
+  apb_env_config env_cfg;
+  apb_env envh;
+  
+  function new(string name="apb_base_test",uvm_component parent);
+    super.new(name,parent);
+  endfunction
+  
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    envh=apb_env::type_id::create("envh",this);
+    m_cfg=apb_agent_config::type_id::create("m_cfg",this);
+    
+    env_cfg=apb_env_config::type_id::create("env_cfg");
+    
+    if(!uvm_config_db#(virtual apb_if)::get(this,"*","vif0",m_cfg.vif0))
+      `uvm_fatal ("VIF0_CONFIG","Not set virtual interface to apb interface")
+      
+      m_cfg.is_active=UVM_ACTIVE;
+    env_cfg.m_cfg=m_cfg;
+    uvm_config_db#(apb_env_config)::set(this,"*","apb_env_config",env_cfg);
+  endfunction
+  
+  function void end_of_elaboration_phase(uvm_phase phase);
+    uvm_top.print_topology;
+  endfunction
+endclass
+
+class apb_write_read_test extends apb_base_test;
+  `uvm_component_utils(apb_write_read_test)
+  
+  apb_write_read_check_seq v_seq;
+  
+  
+  function new(string name="apb_write_read_test",uvm_component parent);
+    super.new(name,parent);
+  endfunction
+  
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+  endfunction
+  
+  task run_phase(uvm_phase phase);
+    phase.raise_objection(this);
+    v_seq=apb_write_read_check_seq::type_id::create("v_seq");
+    v_seq.start(envh.magent.sqr);
+    phase.drop_objection(this);
+  endtask
+endclass
