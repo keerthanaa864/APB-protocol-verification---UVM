@@ -1,0 +1,36 @@
+`include "uvm_macros.svh"
+import uvm_pkg::*;
+typedef enum {read,write} trans;
+
+class apb_xtn extends uvm_sequence_item;
+  
+  
+  rand bit[9:0] addr;
+  rand trans trans_type;
+  rand bit [31:0] wdata;
+  bit [31:0] rdata;
+  
+  `uvm_object_utils_begin(apb_xtn)
+  `uvm_field_int(addr,UVM_ALL_ON)
+  `uvm_field_int(rdata,UVM_ALL_ON)
+  `uvm_field_int(wdata,UVM_ALL_ON)
+  `uvm_object_utils_end
+                
+  
+  function new(string name="apb_xtn");
+    super.new(name);
+  endfunction
+  
+ /* function void do_print(uvm_printer printer);
+    super.do_print(printer);
+    printer.print_field("addr",this.addr,10,UVM_HEX);
+    printer.print_field("trans_type",this.trans_type,1,UVM_HEX);
+    printer.print_field("wdata",this.wdata,32,UVM_HEX);
+    //they gave 8 not 32,why?
+    printer.print_field("rdata",this.rdata,32,UVM_HEX);
+  endfunction*/
+  
+endclass
+        
+        
+        
