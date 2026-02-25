@@ -1,0 +1,60 @@
+class apb_sb extends uvm_scoreboard;
+  `uvm_component_utils(apb_sb)
+  
+  apb_env_config env_config;
+  
+  apb_xtn apb_data;
+  
+  bit [31:0] apb_wr_data [bit[31:0]];
+  bit [31:0] apb_rd_data [bit[31:0]];
+  bit [31:0] mem [bit[31:0]];
+  
+  int i=0,j=0,m=0,n=0;
+  
+  uvm_tlm_analysis_fifo#(apb_xtn) apb_fifo;
+  
+  function new(string name="apb_sb", uvm_component parent);
+    super.new(name,parent);
+    apb_fifo=new("apb_fifo",this);
+  endfunction
+  
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    if(!uvm_config_db#(apb_env_config)::get(this,"*","apb_env_config",env_config))
+      `uvm_fatal("APB_SB","Not able to get config to scoreboard")
+      endfunction
+        
+ task run_phase(uvm_phase phase);
+    apb_xtn trans;
+    forever begin
+      apb_fifo.get(trans);
+      $display("SCOREBOARD");
+      trans.print();
+      if (trans.trans_type == write) begin
+        mem[trans.addr] = trans.wdata;
+        $display("wdata=%0h",trans.wdata);
+        `uvm_info("APB_SB",$sformatf("WRITE:mem[%0h] <= %0h",trans.addr,trans.wdata),UVM_MEDIUM)
+      end
+      else
+        begin
+        if (mem.exists(trans.addr))
+          begin
+          if (mem[trans.addr] == trans.rdata)
+            begin
+              $display("SCORBOARD DATA MATCHED");
+            end
+            else
+              begin
+                $display("scoreboard data mismatched");
+              end
+          end
+        end
+    end
+    endtask
+    
+    /////////////////////////
+    
+    function void check_phase(uvm_phase phase);
+      super.check_phase(phase);
+    endfunction
+      endclass
