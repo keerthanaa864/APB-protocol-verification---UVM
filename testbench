@@ -1,0 +1,65 @@
+// Code your testbench here
+// or browse Examples
+`timescale 1ns/1ps
+`define timeout 10000
+
+`include "uvm_macros.svh"
+import uvm_pkg::*;
+
+`include "apb_if.sv"
+`include "apb_pkg.sv"
+
+import apb_pkg::*;
+`include "apb_sequences.sv"
+`include "apb_mem_tests.sv"
+
+module tb_top;
+  reg clk,resetn;
+  apb_if apb_if_r(clk,resetn);
+  
+  apb_mem apb_mem_inst(
+    .pclk(clk),
+    .presetn(resetn),
+    .psel(apb_if_r.psel),
+    .paddr(apb_if_r.paddr),
+    .penable(apb_if_r.penable),
+    .pwrite(apb_if_r.pwrite),
+    .pwdata(apb_if_r.pwdata),
+    .prdata(apb_if_r.prdata),
+    .pready(apb_if_r.pready)
+  );
+  
+  initial
+    begin
+      clk=0;
+      forever
+        #5 clk=~clk;
+    end
+  initial begin
+    resetn=0;
+    #12
+    resetn=1;
+  end
+  initial begin 
+     uvm_config_db#(virtual apb_if)::set(null,"*","vif0", apb_if_r);
+        
+     run_test("apb_write_read_test"); 
+     #100;   
+
+  end
+  initial begin 
+     global_stop_request(); 
+  end
+ property write;
+   @(posedge clk) (!apb_if_r.prst & apb_if_r.psel & apb_if_r.penable & apb_if_r.pwrite) |-> apb_if_r.pready;
+    endproperty
+    
+      assert property (write)
+        `uvm_info("APB_IF","assertion passed",UVM_NONE)
+        else
+          `uvm_info("APB_IF","assertion FAILED",UVM_NONE)
+ initial begin
+   $dumpfile("apb_mem.vcd");
+   $dumpvars;
+ end
+endmodule
