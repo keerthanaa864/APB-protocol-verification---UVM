@@ -1,0 +1,32 @@
+interface apb_if(input bit pclk,prst);
+  logic[9:0] paddr;
+  logic[31:0] prdata,pwdata;
+  logic psel,penable,pwrite,pready;
+  
+  clocking driver@(posedge pclk);
+    default input #0 output #0;
+    output psel,penable,pwrite,paddr,pwdata;
+    input prdata,pready;
+  endclocking
+  
+  modport DRV(clocking driver,input prst);
+    modport MON(input pclk, prst,psel,penable,pwrite,paddr,pwdata,prdata,pready);
+    
+    property write;
+      // @(posedge pclk) (!prst & psel & penable & pwrite) ## 0 pready; displays both pass and failed assertion
+      @(posedge pclk) (prst & psel & penable  & pwrite) |-> pready;
+    endproperty
+    
+      assert property (write)
+        `uvm_info("APB_IF","assertion PASSED",UVM_NONE)
+        else
+          `uvm_info("APB_IF","assertion FAILED",UVM_NONE)
+     
+      //$display ("write trans check failed");
+      
+/*      property p1;
+        @(posedge pclk) disable iff (!prst) $rose(pwrite && psel) |-> ($stable(paddr && pwdata)[*2]) ##1 $rose (penable && pready) ##1 $fell(pwrite && psel && penable && pready);
+      endproperty
+     assert property (p1) $display("assertion passed",$time);*/
+    
+        endinterface
