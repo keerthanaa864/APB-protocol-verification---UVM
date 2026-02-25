@@ -1,0 +1,93 @@
+class apb_driver extends uvm_driver #(apb_xtn);
+  `uvm_component_utils(apb_driver)
+  
+  virtual apb_if apb_if_drv;
+  apb_agent_config m_cfg;
+  bit wait_for_rsp=0;
+  
+  //create
+  function new(string name="apb_driver",uvm_component parent);
+    super.new(name,parent);
+  endfunction
+  
+  //build
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    if(!uvm_config_db#(apb_agent_config)::get(this,"*","apb_agent_config",m_cfg))//using agentconfig and not virtual interface bcz we need timeout duration,addr data widths, active or passive 
+      `uvm_fatal("DRIVER_VIF0","virtual interface failed from config db");
+  endfunction
+  
+  //connect
+  function void connect_phase(uvm_phase phase);
+    super.connect_phase(phase);
+    apb_if_drv=m_cfg.vif0;
+  endfunction
+  
+  //run
+  task run_phase(uvm_phase phase);
+    forever begin
+      seq_item_port.get_next_item(req);
+      `uvm_info("entered driver","DRIVER",UVM_NONE);
+      send_to_dut(req);
+      
+      if(wait_for_rsp)
+        begin
+          rsp=new("rsp");
+          rsp.set_id_info(req);
+          seq_item_port.put_response(req);
+          `uvm_info("apb_driver",$sformatf("req.rdata=%0h",req.rdata),UVM_MEDIUM)
+        end
+      seq_item_port.item_done();
+    end
+  endtask
+  
+  //write trans to dut
+  
+  
+  task send_to_dut(apb_xtn axtn);
+    begin
+      
+      //write
+      repeat (2) @(posedge apb_if_drv.pclk);      
+      if(axtn.trans_type==write)
+        begin
+          `uvm_info("APB DRIVER",$sformatf("driving the transaction %s",axtn.sprint),UVM_DEBUG)
+          apb_if_drv.DRV.driver.psel<=1;
+          apb_if_drv.DRV.driver.pwrite<=1;
+          apb_if_drv.DRV.driver.penable<=0;
+          apb_if_drv.DRV.driver.paddr<=axtn.addr;
+          apb_if_drv.DRV.driver.pwdata<=axtn.wdata;
+          @(posedge apb_if_drv.pclk);
+          apb_if_drv.DRV.driver.penable<=1;
+          @(posedge apb_if_drv.pclk);
+          while(apb_if_drv.DRV.driver.pready!=1)begin
+             @(posedge apb_if_drv.pclk);
+           end
+          `uvm_info("APB_DRIVER",$sformatf("Drive transaction %s",axtn.sprint),UVM_DEBUG)
+         //apb_if_drv.DRV.driver.penable<=0;
+          //apb_if_drv.DRV.driver.psel<=0;
+          //apb_if_drv.DRV.driver.pwdata<=0;
+        end
+  
+  //read
+      if(axtn.trans_type==read)
+        begin
+          apb_if_drv.DRV.driver.psel<=1;
+          apb_if_drv.DRV.driver.pwrite<=0;
+          apb_if_drv.DRV.driver.penable<=0;
+          apb_if_drv.DRV.driver.paddr<=axtn.addr;
+          @(posedge apb_if_drv.pclk);
+          apb_if_drv.DRV.driver.penable<=1;
+          @(posedge apb_if_drv.pclk);
+          while(apb_if_drv.DRV.driver.pready!=1)begin
+            @(posedge apb_if_drv.pclk);
+          end
+          axtn.rdata=apb_if_drv.DRV.driver.prdata;
+          apb_if_drv.DRV.driver.penable<=0;
+          apb_if_drv.DRV.driver.psel<=0;
+          req.rdata=apb_if_drv.DRV.driver.prdata;
+          `uvm_info("APB_DRIVER",$sformatf("Drive transaction %s",axtn.sprint),UVM_DEBUG)
+        end
+    end
+  endtask
+endclass
