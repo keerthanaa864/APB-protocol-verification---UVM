@@ -1,0 +1,49 @@
+`include "uvm_macros.svh"
+import uvm_pkg::*;
+
+
+class apb_sequence extends uvm_sequence #(apb_xtn);
+  `uvm_object_utils(apb_sequence)
+  apb_env_config env_cfg;
+  
+  function new(string name="apb_sequence");
+    super.new(name);
+  endfunction
+  
+  
+//   task body();
+//   endtask
+endclass
+
+class apb_write_read_check_seq extends apb_sequence;
+  `uvm_object_utils(apb_write_read_check_seq)
+    
+    
+  apb_xtn req;
+    
+    function new(string name="apb_write_read_check_seq");
+      super.new(name);
+    endfunction
+    
+    task body();
+      int data;
+      super.body();
+      req=apb_xtn::type_id::create("req");
+      for(int trans_count=0;trans_count<10;trans_count++)begin
+        begin
+          start_item(req);
+          assert(req.randomize()with {addr==10'h4+trans_count*4;
+                                      trans_type==write;});
+          finish_item(req);
+        
+       // data=req.wdata;
+        
+        start_item(req);
+          assert(req.randomize()with{addr==10'h4+trans_count*4;
+                                     trans_type==read;});
+          finish_item(req);
+        end
+      end
+    endtask
+  endclass
+                                     
