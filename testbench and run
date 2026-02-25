@@ -63,3 +63,6 @@ module tb_top;
    $dumpvars;
  end
 endmodule
+
+run -all
+coverage report -detail
